@@ -3,7 +3,7 @@
 # github.com/github/gitignore
 *.RData
 *.Rhistory
-
+*.rds
 #new comment for gif diff
 
 
