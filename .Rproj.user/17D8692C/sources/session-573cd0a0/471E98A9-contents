@@ -1,0 +1,50 @@
+
+
+# Example dataframe similar to the one you provided earlier
+
+
+
+df_overlap_ex <- data.frame(
+  index = c(1, 1, 1, 1),
+  cusip = c("ABC", "ABC", "ABC", "ABC"),
+  fsym_id = c("a", "b", "c", "d"),
+  min_date = as.Date(c("2000-01-31", "2005-01-31", "2010-01-31", "2005-04-30")),
+  max_date = as.Date(c("2005-01-31", "2010-05-31", "2027-05-31", "2005-05-31"))
+)
+
+
+
+# Function to filter overlaps
+filter_overlaps <- function(df) {
+  df <- df %>%
+    arrange(min_date, max_date) # Sort by min_date and then by max_date
+  
+  result <- list()
+  
+  for (i in seq_len(nrow(df))) {
+    current <- df[i, ]
+    if (i == 1 || current$min_date > tail(result, 1)[[1]]$max_date) {
+      result <- append(result, list(current))
+    }
+  }
+  
+  result_df <- do.call(rbind, result)
+  return(result_df)
+}
+
+# Apply the function
+filtered_df <- df_overlap_ex %>%
+  group_by(index, cusip) %>%
+  do(filter_overlaps(.)) %>%
+  ungroup()
+
+print(filtered_df)
+
+
+
+df %>% 
+  filter(fsym_id!='unique') %>% 
+  group_by(index, cusip) %>%
+  do(filter_overlaps(.)) %>%
+  ungroup()
+  

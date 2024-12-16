@@ -1,0 +1,17 @@
+
+df_overlap_ex_filtered <- df_overlap_ex %>%
+  mutate(
+    min_date_rank = rank(min_date, ties.method = "min"),
+    max_date_rank = rank(-as.numeric(max_date), ties.method = "min"),
+    date_range = as.numeric(max_date - min_date)
+  ) %>%
+  group_by(index, cusip) %>%
+  filter(
+    min_date == min(min_date) |  # Retain the lowest min_date
+      max_date == max(max_date) |  # Retain the highest max_date
+      date_range == max(date_range)  # Retain the record with the largest range
+  ) %>%
+  ungroup() %>%
+  arrange(index, cusip, min_date)
+
+print(df_overlap_ex_filtered)

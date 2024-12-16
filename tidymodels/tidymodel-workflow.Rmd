@@ -1,0 +1,43 @@
+
+
+There are several packages in Tidymodels designed to simplify workflow.
+
+
+recipes: For data preprocessing and feature engineering.
+parsnip: A unified interface for modeling.
+rsample: Tools for resampling and data splitting.
+dials: Parameter tuning objects.
+tune: Hyperparameter tuning.
+yardstick: Performance metrics.
+workflows: Pipeline creation.
+broom: Tidying model outputs.
+
+
+```{r}
+
+gam_model <- parsnip::gen_additive_mod() %>% 
+  parsnip::set_engine('mgcv') %>% 
+  parsnip::set_mode("regression") %>% 
+  parsnip::set_
+
+rec <- recipes::recipe(formula = carat ~., data = diamonds) %>% 
+  recipes::step_ordinalscore(all_factor_predictors())
+
+gam_wf <- workflow() %>% 
+  add_recipe(rec) %>% 
+  add_model(gam_model) %>% 
+  fit(data = diamonds)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,345 @@
+library(tidyr)
+library(dplyr)
+library(lubridate)
+
+elapsed_months <- function(end_date, start_date) {
+  ed <- as.POSIXlt(end_date)
+  sd <- as.POSIXlt(start_date)
+  12 * (ed$year - sd$year) + (ed$mon - sd$mon)
+}
+
+
+
+df <- data.frame(
+  index = c('a', 'a', 'a', 'a', 'a', 'a'),
+  cusip = c('123', '123', '123', '123', '123', '456'),
+  fsym_id = c('c', 'd', 'e', 'bad', 'bad', 'unique'),
+  min_date = as.Date(c('1998-05-31', '1999-11-30', '2001-06-30', '2001-07-31', '2001-01-31', '2003-01-31')),
+  max_date = as.Date(c('1999-10-31', '2001-05-31', '2004-05-31', '2002-07-31', '2003-01-31', '2003-01-31'))
+)
+
+
+
+
+df_overlap_ex <- data.frame(
+  index = c('overlap', 'overlap', 'overlap', 'overlap'),
+  cusip = c('asf', 'asf', 'rgb', 'rgb'),
+  fsym_id = c('b', 'c', 'c', 'd'),
+  min_date = as.Date(c('1998-05-31', '1998-07-31', '2001-06-30', '2001-07-31')),
+  max_date = as.Date(c('1998-08-31', '2001-05-31', '2004-05-31', '2002-07-31'))
+)
+
+
+df_no_overlap <- data.frame(
+  index = c('noverlap', 'noverlap', 'noverlap', 'noverlap'),
+  cusip = c('asada', 'asada', 'carne', 'carne'),
+  fsym_id = c('b', 'c', 'c', 'd'),
+  min_date = as.Date(c('1998-05-31', '2000-07-31', '2001-06-30', '2006-07-31')),
+  max_date = as.Date(c('1998-08-31', '2001-05-31', '2004-05-31', '2020-07-31'))
+)
+
+
+df_no_overlap_multi <- data.frame(
+  index = c('noverlap', 'noverlap', 'noverlap', 'noverlap'),
+  cusip = c('tinga', 'tinga', 'tinga', 'tinga'),
+  fsym_id = c('b', 'c', 'd', 'e'),
+  min_date = as.Date(c('1998-05-31', '2000-07-31', '2001-06-30', '2006-07-31')),
+  max_date = as.Date(c('1998-08-31', '2001-05-31', '2004-05-31', '2020-07-31'))
+)
+
+
+df_subset <- df_subset %>% select(-num_index)
+df_subset_2 <- rbind(df,df_overlap_ex,df_no_overlap,df_no_overlap_multi)
+
+df_single <- df_subset_2 %>% 
+  group_by(index, cusip) %>% 
+  filter(n() == 1)
+
+df_double <- df_subset_2 %>% 
+  group_by(index, cusip) %>% 
+  filter(n() == 2)
+
+df_multi <- df_subset_2 %>% 
+  group_by(index, cusip) %>% 
+  filter(n() > 1)
+
+
+#filter(n() > 1) %>%
+
+multiple_occurrance <- df_subset_2
+i <- i + 1
+subset_data_frame_duplicates <- function(multiple_occurrance){
+  output <- data.frame()
+  distinct_pair_df <- multiple_occurrance %>% distinct(index,cusip)
+  for(i in 1:nrow(distinct_pair_df)){
+    df_subset <- multiple_occurrance %>% 
+      filter(index==distinct_pair_df$index[i],
+             cusip==distinct_pair_df$cusip[i])
+  
+    if(nrow(df_subset)==2){
+      df_subset_filter <- df_subset %>% 
+        mutate(
+          date_range = as.numeric(max_date - min_date)
+        ) %>% 
+        group_by(index, cusip) %>%
+        mutate(
+          min_min_date = min(min_date),
+          max_max_date = max(max_date)
+        ) %>% 
+        filter(date_range == max(date_range)) %>% 
+        mutate(min_date = min_min_date, max_date = max_max_date) %>% 
+        select(index, cusip, fsym_id, min_date, max_date)
+    }else{
+      df_subset_filter <- df_subset %>% 
+        mutate(
+          min_date_rank = rank(min_date, ties.method = "min"),
+          max_date_rank = rank(-as.numeric(max_date), ties.method = "min")
+        )  %>% 
+        arrange(index, cusip, min_date) %>% 
+        filter((min_date_rank < max_date_rank) | max_date_rank == 1) %>% 
+        select(index, cusip, fsym_id, min_date, max_date)
+    }
+    output <- rbind(output, df_subset_filter)
+  }
+ return(output)
+}
+
+
+df_subset_no_overlap <- df_double %>% 
+  ungroup() %>% 
+  mutate(rn =1:n()) %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    next_min_date = lead(min_date), 
+    next_max_date = lag(max_date), 
+    overlap_dn = if_else(!is.na(next_min_date) & max_date >= next_min_date, TRUE, FALSE),
+    overlap_up = if_else(!is.na(next_max_date) & min_date <= next_max_date, TRUE, FALSE)
+  ) %>% 
+  filter(overlap_dn==FALSE & overlap_up==FALSE)
+
+df_subset_overlap <- df_double %>% 
+  ungroup() %>% 
+  mutate(rn =1:n()) %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    next_min_date = lead(min_date), 
+    next_max_date = lag(max_date), 
+    overlap_dn = if_else(!is.na(next_min_date) & max_date >= next_min_date, TRUE, FALSE),
+    overlap_up = if_else(!is.na(next_max_date) & min_date <= next_max_date, TRUE, FALSE)
+  ) %>% 
+  filter(overlap_dn==TRUE | overlap_up==TRUE)
+
+df_subset_overlap <- subset_data_frame_duplicates(multiple_occurrance = df_subset_overlap)
+
+df_multi <- subset_data_frame_duplicates(multiple_occurrance = df_multi)
+
+df_no_overlap_multi
+subset_data_frame_duplicates(multiple_occurrance = df_no_overlap_multi)
+
+df_subset_no_overlap <- df_multi %>% 
+  ungroup() %>% 
+  mutate(rn =1:n()) %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    next_min_date = lead(min_date), 
+    next_max_date = lag(max_date), 
+    overlap_dn = if_else(!is.na(next_min_date) & max_date >= next_min_date, TRUE, FALSE),
+    overlap_up = if_else(!is.na(next_max_date) & min_date <= next_max_date, TRUE, FALSE),
+  ) %>% 
+  filter(overlap_dn==FALSE & overlap_up==FALSE) %>% 
+  select(index, cusip, fsym_id, min_date, max_date)
+
+df_multi %>% 
+  anti_join(df_subset_no_overlap)
+  
+
+
+
+df_subset_overlap <- df_multi %>% 
+  ungroup() %>% 
+  mutate(rn =1:n()) %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    next_min_date = lead(min_date), 
+    next_max_date = lag(max_date), 
+    overlap_dn = if_else(!is.na(next_min_date) & max_date >= next_min_date, TRUE, FALSE),
+    overlap_up = if_else(!is.na(next_max_date) & min_date <= next_max_date, TRUE, FALSE)
+  ) %>% 
+  filter(overlap_dn==TRUE & overlap_up==TRUE | is.na(next_max_date)) %>% 
+  distinct(index,cusip)
+
+
+
+
+df_subset <- df_no_overlap_multi
+
+
+
+df_subset_no_overlap <- df_multi %>%
+  arrange(index, cusip, min_date) %>%  # Sort by index, cusip, and min_date
+  group_by(index, cusip) %>%
+  mutate(
+    next_min_date = lead(min_date),  # Get the min_date of the next record
+    next_max_date = lead(max_date),  # Get the max_date of the next record
+    prev_max_date = lag(max_date),   # Get the max_date of the previous record
+    overlap = if_else(
+      (!is.na(next_min_date) & max_date >= next_min_date) | 
+        (!is.na(prev_max_date) & min_date <= prev_max_date) |
+        (row_number() == 1 & (!is.na(next_min_date) & max_date >= next_min_date)),  # Check if first record overlaps with the next one
+      TRUE, 
+      FALSE
+    )
+  ) %>%
+  filter(overlap == FALSE) %>% 
+  mutate(cnt = n()) %>% 
+  filter(cnt>1) %>% 
+  select(-next_min_date, -next_max_date, -prev_max_date)  # Remove the helper columns
+
+df_multi <- df_multi %>%
+  anti_join(df_subset_no_overlap, by = c("index", "cusip", "fsym_id", "min_date", "max_date"))
+
+
+
+
+
+
+
+print(df_filtered)
+
+
+
+df_subset_no_overlap <- df_multi %>%
+    arrange(index, cusip, min_date) %>%  # Sort by index, cusip, and min_date
+    group_by(index, cusip) %>%
+    mutate(
+      next_min_date = lead(min_date),  # Get the min_date of the next record
+      next_max_date = lead(max_date),  # Get the max_date of the next record
+      prev_max_date = lag(max_date),   # Get the max_date of the previous record
+      overlap = if_else(
+        (!is.na(next_min_date) & max_date >= next_min_date) | 
+          (!is.na(prev_max_date) & min_date <= prev_max_date) |
+          (row_number() == 1 & (!is.na(next_min_date) & max_date >= next_min_date)),  # Check if first record overlaps with the next one
+        TRUE, 
+        FALSE
+      )
+    ) %>%
+    filter(overlap == FALSE) %>% 
+    mutate(cnt = n()) %>% 
+    filter(cnt>1) %>% 
+    select(-next_min_date, -next_max_date, -prev_max_date)  # Remove the helper columns
+  
+  print(df_overlap_ex_with_overlap)
+
+
+
+  df_subset_overlap <- df_multi %>%
+    group_by(index, cusip) %>%
+    arrange(index, cusip, min_date) %>%  # Sort by index, cusip, and min_date
+    mutate(
+      next_min_date = lead(min_date),  # Get the min_date of the next record
+      next_max_date = lead(max_date),  # Get the max_date of the next record
+      prev_max_date = lag(max_date),   # Get the max_date of the previous record
+      overlap = if_else(
+        (!is.na(next_min_date) & max_date >= next_min_date) | 
+          (!is.na(prev_max_date) & min_date <= prev_max_date), 
+        TRUE, 
+        FALSE
+      )
+    ) %>%
+    ungroup() %>%
+    filter(overlap == TRUE) %>% 
+    select(-next_min_date, -next_max_date, -prev_max_date)  # Remove the helper columns
+  
+
+
+
+
+
+df_no_overlap %>% 
+  filter(cusip =='carne') %>% 
+  mutate(
+    date_range = as.numeric(max_date - min_date)
+  ) %>% 
+  group_by(index, cusip) %>%
+  mutate(
+    next_min_date = lead(min_date),  # Get the min_date of the next record
+    overlap = if_else(!is.na(next_min_date) & max_date >= next_min_date, TRUE, FALSE)
+    # complete_overlap_with_previous = min_date >= lag(min_date) & max_date <= lag(max_date) & !is.na(lag(min_date)),
+    # complete_overlap_with_next = min_date <= lead(min_date) & max_date >= lead(max_date) & !is.na(lead(min_date))
+    #diff_check_gap =ifelse(!is.na(lead_min), )
+  ) 
+# %>% 
+#   mutate()
+#   filter(date_range == max(date_range)) %>% 
+#   mutate(min_date = min_min_date, max_date = max_max_date) %>% 
+#   select(index, cusip, fsym_id, min_date, max_date)
+
+
+df_subset_drop_overlaps <- df_subset %>% 
+  mutate(
+    min_date_rank = rank(min_date, ties.method = "min"),
+    max_date_rank = rank(-as.numeric(max_date), ties.method = "min")
+  )  %>% 
+  arrange(index, cusip, min_date) %>% 
+  filter((min_date_rank < max_date_rank) | max_date_rank == 1)
+
+
+
+  
+
+  
+
+
+
+
+
+
+# Think about ties.
+df_overlap_ex %>% 
+  filter(index==distinct_pair_df$index[1],
+         cusip==distinct_pair_df$cusip[1])
+
+df_overlap_ex %>% 
+  mutate(
+    min_date_rank = rank(min_date, ties.method = "min"),
+    max_date_rank = rank(-as.numeric(max_date), ties.method = "min")
+  )  %>% 
+  arrange(index, cusip, min_date) %>% 
+  filter((min_date_rank < max_date_rank) | max_date_rank == 1)
+
+
+df_subset %>% tidyr::pivot_longer(
+  cols = c(min_date, max_date),
+  names_to = "variable",
+  values_to = "date"
+)
+
+
+
+
+
+df  %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date)
+
+
+
+df_subset %>% 
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>% 
+  mutate(
+    rn = 1:n(),
+    
+    lead_min = lead(min_date),
+    lag_max = lag(max_date),
+    eom1_lead_min = lubridate::ceiling_date(lead_min, "month") - days(1),
+    eom1_lag_max = lubridate::ceiling_date(lag_max, "month") - days(1),
+    lead_min_diff_max = as.numeric(interval(lead_min, eom1_lead_min) %/% months(1))
+    #lead_min_diff_max = time_length(interval(lead_min, eom1_lead_min), "months")
+  )
+
+

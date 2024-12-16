@@ -1,0 +1,56 @@
+
+import pandas as pd
+import numpy as np
+
+# Sample data based on your example
+data = {
+    'index': ['a', 'a', 'a', 'a'],
+    'cusip': ['123', '123', '123', '123'],
+    'fsym_id': ['b', 'b', 'b', 'b'],
+    'min_date': pd.to_datetime(['1998-05-31', '1999-11-30', '2001-06-30', '2001-07-31']),
+    'max_date': pd.to_datetime(['1999-10-31', '2001-05-31', '2004-05-31', '2002-07-31'])
+}
+
+df = pd.DataFrame(data)
+
+# 1. Unique occurrences of `index` and `cusip`
+unique_occurrences = df.groupby(['index', 'cusip']).filter(lambda x: len(x) == 1)
+
+# 2. Sequential records (month-end dates)
+df_sorted = df.sort_values(by=['index', 'cusip', 'min_date'])
+df_sorted['sequential_with_next'] = (
+    df_sorted['min_date'] == df_sorted['max_date'].shift() + pd.offsets.MonthEnd(1)
+)
+
+sequential_records = df_sorted[
+    (df_sorted['sequential_with_next']) | (df_sorted['sequential_with_next'].shift(-1))
+]
+
+# 3. Overlapping records, not inside another
+df_sorted['overlap_with_previous'] = (
+    df_sorted['min_date'] <= df_sorted['max_date'].shift()
+)
+df_sorted['complete_overlap_with_previous'] = (
+    df_sorted['min_date'] >= df_sorted['min_date'].shift()
+) & (
+    df_sorted['max_date'] <= df_sorted['max_date'].shift()
+)
+df_sorted['complete_overlap_with_next'] = (
+    df_sorted['min_date'] <= df_sorted['min_date'].shift(-1)
+) & (
+    df_sorted['max_date'] >= df_sorted['max_date'].shift(-1)
+)
+
+overlapping_records = df_sorted[
+    (df_sorted['overlap_with_previous']) &
+    (~df_sorted['complete_overlap_with_previous']) &
+    (~df_sorted['complete_overlap_with_next'])
+]
+
+# 4. Records retaining the one that sits outside of the date range of others
+outermost_records = df_sorted[
+    (df_sorted['min_date'] <= df_sorted['min_date'].min()) &
+    (df_sorted['max_date'] >= df_sorted['max_date'].max())
+]
+
+unique_occurrences, sequential_records, overlapping_records, outermost_records

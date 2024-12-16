@@ -1,0 +1,69 @@
+library(shiny)
+
+# Function to calculate wheel circumference (in meters)
+wheel_circumference <- function(diameter, tire_width) {
+  # Diameter in meters and tire width directly in meters (since it's already in mm)
+  pi * (diameter + 2 * (tire_width / 1000))
+}
+
+# Function to calculate speed (in km/h)
+calculate_speed <- function(circumference, teeth_front, teeth_rear, cadence) {
+  # Convert circumference to kilometers
+  circumference_km <- circumference / 1000
+  # Calculate gear ratio
+  gear_ratio <- teeth_front / teeth_rear
+  # Speed in km/h
+  speed_km_per_hr <- circumference_km * gear_ratio * cadence * 60
+  
+  speed_mph_per_hr <- round(speed_km_per_hr / 1.609,2)
+  speed_km_per_hr <- round(speed_km_per_hr,2)
+  speed <- list(speed_km_per_hr,speed_mph_per_hr)
+  
+  speed <- paste0(paste(speed,collapse = ','), "(kph,mph)")
+  
+  return(speed)
+}
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Cycling Speed Calculator"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("cadence", "Cadence (RPM):", min = 0, max = 120, value = 90),
+      numericInput("diameter", "Wheel Diameter (inches):", value = 27),
+      numericInput("tireWidth", "Tire Width (mm):", value = 32),
+      numericInput("teethFront", "Front Chainring Teeth:", min = 1, value = 53),
+      numericInput("teethRear", "Rear Cog Teeth:", min = 1, value = 19)
+    ),
+    
+    mainPanel(
+      h3("Calculated Speed (kph,mph)"),
+      verbatimTextOutput("speedOutput")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  output$speedOutput <- renderText({
+    # Convert inches to meters for wheel diameter
+    diameter_m <- input$diameter * 0.0254
+    # Tire width is already in mm, convert directly to meters
+    tireWidth_m <- input$tireWidth / 1000
+    
+    # Calculate wheel circumference
+    circumference <- wheel_circumference(diameter_m, tireWidth_m)
+    
+    # Calculate speed
+    speed <- calculate_speed(circumference, input$teethFront, input$teethRear, input$cadence)
+    
+    
+    speed
+    
+    
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)

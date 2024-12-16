@@ -1,0 +1,36 @@
+
+library(dplyr)
+library(lubridate)
+
+# Sample data frame based on your example
+df <- data.frame(
+  index = c('a', 'a', 'a', 'a'),
+  cusip = c('123', '123', '123', '123'),
+  fsym_id = c('b', 'b', 'b', 'b'),
+  min_date = as.Date(c('1998-05-31', '1999-11-30', '2001-06-30', '2001-07-31')),
+  max_date = as.Date(c('1999-10-31', '2001-05-31', '2004-05-31', '2002-07-31'))
+)
+
+# Step 1: Identify complete overlaps and sequential bonds
+df <- df %>%
+  arrange(index, cusip, min_date) %>%
+  group_by(index, cusip) %>%
+  mutate(
+    next_month_end = ceiling_date(max_date, "month") - days(1),
+    sequential_with_previous = lag(min_date) == next_month_end & !is.na(lag(min_date)),
+    sequential_with_next = lead(min_date) == ceiling_date(max_date, "month") - days(1) & !is.na(lead(min_date)),
+    complete_overlap_with_previous = min_date >= lag(min_date) & max_date <= lag(max_date) & !is.na(lag(min_date)),
+    complete_overlap_with_next = min_date <= lead(min_date) & max_date >= lead(max_date) & !is.na(lead(min_date))
+  ) %>%
+  ungroup()
+
+# Step 2: Filter out the overlapping bond, keeping only sequential bonds
+# result <- df %>%
+#   filter(!(complete_overlap_with_previous | complete_overlap_with_next)) %>%
+  #filter(sequential_with_previous | sequential_with_next | is.na(sequential_with_previous) & is.na(sequential_with_next))
+
+  
+  
+  
+  
+  

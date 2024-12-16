@@ -1,0 +1,46 @@
+
+
+date_val <- as.Date('2020-12-31')
+x <- -1
+
+library(lubridate)
+eomonth <- function(date_val,x){
+  if(x>0){
+    date_adj <- (date_val + months(abs(x))) - days(1)
+  }else{
+    date_adj <- (date_val - months(abs(x))) - days(1)
+  }
+  return(date_adj)
+}
+library(E)
+
+
+df %>% 
+  group_by(index, cusip) %>%
+  filter(n() > 1) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    lead_min_date = lead(min_date),
+    lead_min_month = ifelse(month(lead_min_date)==1,12,month(lead_min_date)-1),
+    lead_min_year = ifelse(month(lead_min_date)==1,year(lead_min_date)-1,year(lead_min_date)),
+    max_date_month = month(max_date),
+    max_date_year = year(max_date)
+  ) %>% 
+  ungroup() %>% 
+  filter(((max_date_month == lead_min_month) & (max_date_year == lead_min_year)) | lead_min_date<max_date)
+  
+
+result <- df %>% 
+  group_by(index, cusip) %>%
+  filter(n() > 1) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    lead_min_date = lead(min_date),
+    is_sequential = (max_date + days(1)) == floor_date(lead_min_date, "month"),
+    is_overlapping = lead_min_date <= max_date
+  ) %>%
+  ungroup() %>%
+  filter(is_sequential | is_overlapping)
+
+
+result

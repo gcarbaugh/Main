@@ -1,0 +1,34 @@
+  
+
+library(tidymodels)
+library(ggplot2)
+
+
+datasets::ChickWeight %>% head()
+
+datasets::chickwts %>% 
+  group_by(feed) %>% 
+  summarize(min_wgt = min(Weight),
+            max_wgt = max(Weight))
+
+
+chick_feed_tbl <- datasets::chickwts %>%
+  select(Feed=feed, Weight = weight) %>% 
+  arrange(Feed, Weight) %>% 
+  group_by(Feed) %>% 
+  mutate(order = 1:n(),
+         growth_rate = (Weight/lag(Weight,1,order_by=order)-1),
+         growth_rate = ifelse(is.na(growth_rate),1,growth_rate),
+         cumprod = cumsum(x = growth_rate),
+         #cumprod = ifelse(order == 1, cumprod-1, cumprod)
+         )
+
+
+
+chick_feed_tbl %>% 
+  ggplot(mapping = aes(x=order,y=cumprod, color = Feed)) + 
+  geom_line() + 
+  labs(title = 'Cumulative Growth Rate of Feed Type on Chicks') + 
+  xlab('Period')+
+  ylab('Cumulative Growth')
+

@@ -1,0 +1,53 @@
+library(dplyr)
+library(lubridate)
+
+# Provided df
+df <- data.frame(
+  num_index = c(1:6),
+  index = c('a', 'a', 'a', 'a', 'a', 'a'),
+  cusip = c('123', '123', '123', '123', '123', '456'),
+  fsym_id = c('c', 'd', 'e', 'bad', 'bad', 'unique'),
+  min_date = as.Date(c('1998-05-31', '1999-11-30', '2001-06-30', '2001-07-31', '2001-01-31', '2003-01-31')),
+  max_date = as.Date(c('1999-10-31', '2001-05-31', '2004-05-31', '2002-07-31', '2003-01-31', '2003-01-31'))
+)
+
+# Step 1: Isolate single instances
+single_instances <- df %>%
+  group_by(index, cusip) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+# Step 2: Filter for records with multiple occurrences and drop complete overlaps
+multiple_instances <- df %>%
+  group_by(index, cusip) %>%
+  filter(n() > 1) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    complete_overlap_with_previous = min_date >= lag(min_date) & max_date <= lag(max_date),
+    complete_overlap_with_next = min_date <= lead(min_date) & max_date >= lead(max_date)
+  ) %>%
+  filter(!(complete_overlap_with_previous & complete_overlap_with_next)) %>%
+  ungroup()
+
+# Step 3: Identify and drop partial overlaps that disrupt month-end sequences
+sequential_instances <- multiple_instances %>%
+  group_by(index, cusip) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    lead_min_date = lead(min_date),
+    lag_max_date = lag(max_date),
+    is_sequential = (month(max_date) + 1) %% 12 == month(lead_min_date) & year(max_date) + (month(max_date) == 12) == year(lead_min_date),
+    is_partial_overlap = !is_sequential & (min_date < lag_max_date & max_date > lead_min_date)
+  ) %>%
+  filter(!is_partial_overlap) %>%
+  ungroup()
+
+# Display the results
+print("Single Instances:")
+print(single_instances)
+
+print("Multiple Instances (without Complete Overlaps):")
+print(multiple_instances)
+
+print("Sequential Instances (after removing partial overlaps):")
+print(sequential_instances)

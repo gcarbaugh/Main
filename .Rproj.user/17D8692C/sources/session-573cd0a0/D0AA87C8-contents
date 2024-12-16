@@ -1,0 +1,84 @@
+
+
+
+
+
+```{r}
+# Assuming df is your data frame
+df <- df %>%
+  group_by(index, cusip) %>%
+  mutate(overlap = case_when(
+    lead(min_date) <= max_date ~ TRUE,
+    lag(max_date) >= min_date ~ TRUE,
+    TRUE ~ FALSE
+  )) %>%
+  ungroup()
+
+df %>% 
+  group_by(index, cusip) %>%
+  filter(!overlap | row_number() == n()) %>% ungroup()
+
+
+df %>%
+  group_by(index, cusip) %>%
+  filter(!overlap | row_number() == 1) %>%
+  ungroup()
+
+```
+
+```{r}
+df %>%
+  group_by(index, cusip) %>%
+  filter(n() > 1) %>%
+  arrange(index, cusip, min_date) %>%
+  mutate(
+    complete_overlap_with_previous = min_date >= lag(min_date) & max_date <= lag(max_date),
+    complete_overlap_with_next = min_date <= lead(min_date) & max_date >= lead(max_date)
+  ) %>%
+  filter(!(complete_overlap_with_previous & complete_overlap_with_next)) %>%
+  ungroup()
+```
+
+```{r}
+duplicate_df <- df %>%
+  group_by(index, cusip) %>%
+  filter(n() > 1) %>%
+  ungroup()
+
+breaking_sequence_df <- duplicate_df %>%
+  group_by(index, cusip) %>%
+  arrange(min_date) %>%
+  mutate(
+    prev_max_date = lag(max_date),
+    breaks_sequence = if_else(!is.na(prev_max_date) & min_date <= prev_max_date, TRUE, FALSE)
+  ) %>%
+  filter(breaks_sequence == TRUE) %>%
+  ungroup()
+
+# Step 2: Identify records completely overlapped by another
+overlapped_df <- duplicate_df %>%
+  group_by(index, cusip) %>%
+  mutate(
+    completely_overlapped = any(min_date > lag(min_date) & max_date <= lag(max_date))
+  ) %>%
+  filter(completely_overlapped == TRUE) %>%
+  ungroup()
+
+```
+
+
+```{r}
+breaking_sequence_df
+```
+
+
+
+
+
+```{r}
+overlapped_df
+```
+
+
+
+

@@ -1,0 +1,22 @@
+"0","recipes::recipe(formula = carat ~., data = diamonds) %>% 
+  recipes::step_ordinalscore(all_factor_predictors())
+"
+"1","
+"
+"1","[36m──[39m [1mRecipe[22m [36m─────────────────────────────────[39m
+"
+"1","
+"
+"1","── Inputs 
+"
+"1","Number of variables by role
+"
+"1","outcome:   1
+predictor: 9
+"
+"1","
+"
+"1","── Operations 
+"
+"1","[36m•[39m Scoring for: [34mall_factor_predictors()[39m
+"

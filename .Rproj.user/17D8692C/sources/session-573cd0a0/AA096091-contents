@@ -1,0 +1,54 @@
+library(shiny)
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Gear Selection"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      # Gear selection input
+      selectInput(
+        "gears", 
+        "Select Gears:", 
+        choices = 11:52,
+        multiple = TRUE,
+        selected = NULL,
+      ),
+      tags$script("
+        $(document).on('shiny:inputchanged', function(event) {
+          if (event.name === 'gears') {
+            if (event.value.length > 12) {
+              alert('You cannot select more than 12 gears.');
+              var currentGears = event.value.slice(0, 12);
+              $('#gears').val(currentGears).trigger('change');
+            }
+          }
+        });
+      ")
+    ),
+    
+    mainPanel(
+      h3("Selected Gears"),
+      textOutput("selectedGears")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  output$selectedGears <- renderText({
+    if (is.null(input$gears)) {
+      return("No gears selected.")
+    } else {
+      paste("Selected gears: ", paste(input$gears, collapse = ", "))
+    }
+  })
+  
+  
+  
+  
+  
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
