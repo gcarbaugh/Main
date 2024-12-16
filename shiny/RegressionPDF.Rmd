@@ -21,7 +21,10 @@ Our example data set is the FAF4 data which contains the flow of goods between S
 
 We can read data with our read.csv function. Read in as follows:  
 ```{r data1}
-data <- read.csv("P:/NS RUG/2017.07.19_Regression/example.csv")
+#data <- read.csv("P:/NS RUG/2017.07.19_Regression/example.csv")
+data <- data.frame(a = rnorm(100,0,1),
+                   b = rnorm(100,0,1),
+                   c = rnorm(100,0,1))
 ```
 
 In R, the <- and = signs are equivalent. You can use either to put data into objects. This R users typically uses the <-, but sometimes accidently slips and uses =. Both are acceptable forms of writing code.    
