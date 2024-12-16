@@ -1,0 +1,126 @@
+---
+title: "NS RUG: Regressions"
+author: "Dan Ross-Li"
+date: "July 8, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(eval = TRUE)
+knitr::opts_chunk$set(tidy = TRUE)
+```
+
+# Summary  
+
+An overview on how to perform regressions in R
+
+# Data  
+
+Our example data set is the FAF4 data which contains the flow of goods between States in the US. This dataset is 1.5 million rows long and multiple columns (about 60). We decided to only include the tons moved in 2012 and the tons moved in 2015. We have suppressed the names of the good.
+
+We can read data with our read.csv function. Read in as follows:  
+```{r data1}
+data <- read.csv("P:/NS RUG/2017.07.19_Regression/example.csv")
+```
+
+In R, the <- and = signs are equivalent. You can use either to put data into objects. This R users typically uses the <-, but sometimes accidently slips and uses =. Both are acceptable forms of writing code.    
+```{r data2}
+data = read.csv("P:/NS RUG/2017.07.19_Regression/example.csv")
+```
+
+After we read in our data, sometimes we want to check and see if the data was read in correctly. One of the basic checks we can do is look at the first couple of rows. We can do this with the "head" function. This will by default print out the first 6 rows.  
+```{r data3}
+head(data)
+```
+
+Similarly, we can look at the last couple of rows with the "tail" function. This will by default print out the last 6 rows.  
+```{r data4}
+tail(data)
+```
+
+Lastly, you can choose the number of rows you want to view by specifying a number as such:  
+```{r data5}
+tail(data, 10)
+```
+
+For now, your datasets might not be that large, but eventually you will encounter datasets that are thousands, millions, billions, trillions of rows long.  
+
+# Data Cleaning  
+
+Sometimes our data comes in dirty (with missingness and/or NA). A quick check is to a count of the number of NA's.
+```{r clean1}
+sum(is.na(data$tons2012))
+```
+
+This dataset has already been cleaned for you. We will cover cleaning more in depth in future lessons.
+
+# Regressions  
+
+Each data set is different and has different modeling approaches. Today we will cover linear regressions. This modeling approach is good for problems that have an intuitive continuous linear relationship. 
+
+R has a native regression function. This is the 'lm' function. 
+
+```{r reg1}
+data <- data[1:100000,]
+model.regression <- lm(tons2015 ~ tons2012, data = data)
+```
+
+Our regression is now stored in an object called model.regression. However we do not see anything on the screen. A few basic funcitons however can access this information.
+
+The first thing we can do is just type in the name of the regression model. This will return the simple information of the model.
+```{r reg2}
+model.regression
+```
+
+For more detailed information we can try the summary command.
+
+```{r reg3}
+summary(model.regression)
+```
+
+There is a large list of information within the object. We can access the information with the '$' operator. 
+
+```{r reg4}
+model.regression$coef
+```
+
+To answer Bernard's question from last meeting, we can also show fitted values, as well as residuals:
+
+```{r reg5}
+head(model.regression$fitted.values)
+```
+
+We specify 'head' so we don't get 1.5 million rows.
+
+```{r reg6}
+head(model.regression$residuals)
+```
+
+# Results  
+
+Plotting the results: 
+```{r result}
+plot(data$tons2012, data$tons2015)
+```
+
+```{r result1}
+plot(data$tons2012, data$tons2015, pch = 20, main = "Our Raw Data", xlab = "Tons 2012", ylab = "Tons 2015")
+```
+
+Adding our regression line
+```{r result2}
+plot(data$tons2012, data$tons2015, pch = 20, main = "Our Raw Data", xlab = "Tons 2012", ylab = "Tons 2015")
+lines(data$tons2012, model.regression$fitted.values, col = 'red')
+```
+
+Coloring our initial data by type
+```{r result3}
+plot(data$tons2012, data$tons2015, pch = 20, main = "Our Raw Data Color by Type", xlab = "Tons 2012", ylab = "Tons 2015", col = data$tradetype)
+legend("topleft", legend=unique(data$tradetype), pch=20, col=unique(data$tradetype))
+```
+
+
+
+
+
